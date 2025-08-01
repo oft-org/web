@@ -6,7 +6,15 @@
     </div>
     <div v-else-if="error" class="error">{{ error }}</div>
     <div v-else class="table-container">
-      <h1 class="table-title">Clasificación de la Liga</h1>
+      <div class="tournament-header">
+        <h1 class="table-title">
+          <span class="country-flag">{{ countryFlag }}</span>
+          {{ tournamentName }}
+        </h1>
+        <button class="matches-button" @click="goToMatches">
+          Ver Partidos
+        </button>
+      </div>
       <table class="classification-table">
         <thead>
           <tr>
@@ -19,23 +27,23 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="team in data" :key="team.TeamID" :class="getPositionClass(team.Position)">
+          <tr v-for="team in teams" :key="team.team_id" :class="getPositionClass(team.position)">
             <td class="position-cell">
-              <span class="position-number">{{ team.Position }}</span>
+              <span class="position-number">{{ team.position }}</span>
             </td>
             <td class="team-cell">
               <div class="team-info">
                 <div class="team-badge"></div>
-                <span class="team-name">{{ team.TeamName }}</span>
+                <span class="team-name">{{ team.team_name }}</span>
               </div>
             </td>
             <td class="points-cell">
-              <span class="points-value">{{ team.Points }}</span>
+              <span class="points-value">{{ team.points }}</span>
             </td>
-            <td class="goals-cell">{{ team.GoalsFor }}</td>
-            <td class="goals-cell">{{ team.GoalsAgainst }}</td>
-            <td class="goal-diff-cell" :class="{ 'positive': team.GoalDifference > 0, 'negative': team.GoalDifference < 0 }">
-              {{ team.GoalDifference > 0 ? '+' : '' }}{{ team.GoalDifference }}
+            <td class="goals-cell">{{ team.goals_for }}</td>
+            <td class="goals-cell">{{ team.goals_against }}</td>
+            <td class="goal-diff-cell" :class="{ 'positive': team.goal_difference > 0, 'negative': team.goal_difference < 0 }">
+              {{ team.goal_difference > 0 ? '+' : '' }}{{ team.goal_difference }}
             </td>
           </tr>
         </tbody>
@@ -45,14 +53,16 @@
 </template>
 
 <script>
-import { ref, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { ref, onMounted, computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { fetchClassification } from '../services/classification'
+import { getCountryFlag } from '../utils/countryFlags'
 
 export default {
   name: 'LeagueTable',
   setup() {
     const route = useRoute()
+    const router = useRouter()
     const loading = ref(true)
     const error = ref(null)
     const data = ref([])
@@ -76,6 +86,23 @@ export default {
       return 'safe-positions'
     }
 
+    const tournamentName = computed(() => {
+      return data.value[0]?.tournament_name || 'Clasificación de la Liga'
+    })
+
+    const countryFlag = computed(() => {
+      const countryCode = data.value[0]?.country
+      return countryCode ? getCountryFlag(countryCode) : ''
+    })
+
+    const teams = computed(() => {
+      return data.value[0]?.Teams || []
+    })
+
+    const goToMatches = () => {
+      router.push(`/season/${route.params.season_id}/matches`)
+    }
+
     onMounted(() => {
       loadClassification()
     })
@@ -84,7 +111,11 @@ export default {
       loading,
       error,
       data,
-      getPositionClass
+      getPositionClass,
+      tournamentName,
+      countryFlag,
+      teams,
+      goToMatches
     }
   }
 }
@@ -133,12 +164,42 @@ export default {
   margin: 0 auto;
 }
 
-.table-title {
+.tournament-header {
   text-align: center;
+  margin-bottom: 30px;
+}
+
+.table-title {
   color: var(--color-text);
   font-size: 2.5em;
   font-weight: bold;
-  margin-bottom: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 15px;
+}
+
+.country-flag {
+  font-size: 1.2em;
+}
+
+.matches-button {
+  background: linear-gradient(135deg, #3498db, #2980b9);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 25px;
+  font-weight: 600;
+  font-size: 1em;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-top: 15px;
+}
+
+.matches-button:hover {
+  background: linear-gradient(135deg, #2980b9, #1f5f8b);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
 }
 
 .classification-table {
@@ -277,6 +338,17 @@ export default {
 @media (max-width: 768px) {
   .table-title {
     font-size: 2em;
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .country-flag {
+    font-size: 1.5em;
+  }
+  
+  .matches-button {
+    padding: 10px 20px;
+    font-size: 0.9em;
   }
   
   .classification-table th,
